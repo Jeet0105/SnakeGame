@@ -9,9 +9,6 @@ struct Position {
     bool operator==(const Position& other) const {
         return x == other.x && y == other.y;
     }
-    bool operator!=(const Position& other) const {
-        return !(*this == other);
-    }
 };
 
 enum Direction { UP, DOWN, LEFT, RIGHT };

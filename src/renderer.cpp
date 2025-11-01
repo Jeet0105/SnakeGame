@@ -23,16 +23,16 @@ void Renderer::drawToBuffer(int x, int y, const std::string& content) {
     }
 }
 
-void Renderer::render(const Snake& snake, const Position& food, int score, int highScore, bool paused) {
-    // Don't clear the screen - use cursor positioning instead
-    std::cout << "\033[0;0H"; // Move cursor to top-left without clearing
+void Renderer::render(const Snake& snake, const Position& food, const Position& specialFood, 
+                     bool specialFoodActive, int score, int highScore, bool paused) {
+    clearBuffer();
     
     int bufferY = 0;
     
     // Game title with high score
     std::stringstream title;
-    title << "🐍 SNAKE GAME 🐍 | 🏆 High: " << highScore << "                    "; // Extra spaces to clear previous content
-    drawToBuffer(0, bufferY++, title.str());
+    title << "🐍 SNAKE GAME 🐍 | 🏆 High: " << highScore;
+    drawToBuffer(0, bufferY++, title.str() + "        ");
     
     // Top border
     std::string topBorder = "🔶";
@@ -40,29 +40,20 @@ void Renderer::render(const Snake& snake, const Position& food, int score, int h
     topBorder += "🔶";
     drawToBuffer(0, bufferY++, topBorder);
     
-    // Game board
-    const auto& body = snake.getBody();
-    Position head = snake.getHead();
-    
+    // Game board with special food
     for (int y = 0; y < boardHeight; y++) {
         std::string line = "🔹";
         for (int x = 0; x < boardWidth; x++) {
-            if (head.x == x && head.y == y) {
+            if (snake.getHead().x == x && snake.getHead().y == y) {
                 line += "🐍";
+            } else if (snake.isOnPosition(x, y)) {
+                line += "🟢";
+            } else if (specialFoodActive && specialFood.x == x && specialFood.y == y) {
+                line += "🌟";  // Special food - star emoji
             } else if (food.x == x && food.y == y) {
                 line += "🍎";
             } else {
-                bool isBodyPart = false;
-                for (size_t i = 1; i < body.size(); i++) {
-                    if (body[i].x == x && body[i].y == y) {
-                        line += "🟢";
-                        isBodyPart = true;
-                        break;
-                    }
-                }
-                if (!isBodyPart) {
-                    line += "  ";
-                }
+                line += "  ";
             }
         }
         line += "🔹";
@@ -77,18 +68,30 @@ void Renderer::render(const Snake& snake, const Position& food, int score, int h
     
     // UI information
     std::stringstream scoreInfo;
-    scoreInfo << "📊 Score: " << score << " | 📏 Length: " << snake.getLength() << "               ";
-    drawToBuffer(0, bufferY++, scoreInfo.str());
+    scoreInfo << "📊 Score: " << score << " | 📏 Length: " << snake.getLength();
+    drawToBuffer(0, bufferY++, scoreInfo.str() + "          ");
     
-    std::string controls = "🎮 Controls: WASD/Arrow Keys | ⏸️  P | 🔄 R | ❌ Q          ";
-    drawToBuffer(0, bufferY++, controls);
+    // Special food indicator
+    if (specialFoodActive) {
+        std::string specialInfo = "🌟 SPECIAL FOOD ACTIVE! +30 points!";
+        drawToBuffer(0, bufferY++, specialInfo + "      ");
+    } else {
+        // Clear the special food line
+        drawToBuffer(0, bufferY++, "                                    ");
+    }
+    
+    std::string controls = "🎮 Controls: WASD/Arrow Keys | ⏸️  P | 🔄 R | ❌ Q";
+    drawToBuffer(0, bufferY++, controls + "    ");
     
     if (paused) {
         drawToBuffer(0, bufferY, "⏸️  PAUSED - Press P to continue                    ");
     } else {
-        // Clear the pause line if not paused
+        // Clear the pause line when not paused
         drawToBuffer(0, bufferY, "                                                    ");
     }
+    
+    // Move cursor to top instead of clearing screen (reduces blinking)
+    std::cout << "\033[H";
     
     // Output the entire buffer
     for (const auto& line : screenBuffer) {
@@ -97,35 +100,23 @@ void Renderer::render(const Snake& snake, const Position& food, int score, int h
         }
     }
     
-    // Clear any remaining lines from previous render
-    for (int i = bufferY + 1; i < screenBuffer.size(); i++) {
-        std::cout << "                                                                  \n";
-    }
-    
     std::cout.flush();
 }
 
 void Renderer::renderGameOver(int score, int highScore) {
-    // Clear screen only for game over (not every frame)
+    // Clear screen for game over (not every frame)
     clearScreen();
-    std::cout << "\n";
-    std::cout << "💀 GAME OVER! 💀\n";
+    std::cout << "\n💀 GAME OVER! 💀\n";
     std::cout << "🏆 Final Score: " << score << " | High Score: " << highScore << "\n";
-    std::cout << "\n";
-    std::cout << "🔄 Press SPACE or R to restart\n";
-    std::cout << "❌ Press Q to quit\n";
+    std::cout << "🔄 Press SPACE or R to restart | ❌ Q to quit\n";
     std::cout.flush();
 }
 
 void Renderer::renderMenu() {
     clearScreen();
-    std::cout << "========================================\n";
-    std::cout << "           🐍 SNAKE GAME 🐍           \n";
-    std::cout << "========================================\n";
-    std::cout << "\n";
+    std::cout << "🐍 === SNAKE GAME === 🐍\n";
     std::cout << "1. 🎮 Start Game\n";
     std::cout << "2. ❌ Quit\n";
-    std::cout << "\n";
     std::cout << "🎯 Select option: ";
     std::cout.flush();
 }

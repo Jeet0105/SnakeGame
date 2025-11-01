@@ -1,22 +1,14 @@
-# Executables
 snake_game
 snake_game.exe
 *.exe
 *.out
 
-# Build files
-build/
 *.o
 *.obj
 
-# IDE files
 .vscode/
 .idea/
 *.swp
 
-# OS files
-.DS_Store
-Thumbs.db
 
-# High scores (optional)
 highscore.txt

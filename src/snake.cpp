@@ -1,6 +1,5 @@
 #include "snake.h"
 #include <algorithm>
-#include <iostream>
 
 Snake::Snake(int startX, int startY, int width, int height) 
     : boardWidth(width), boardHeight(height) {

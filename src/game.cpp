@@ -8,35 +8,43 @@ Game::Game()
     : snake(BOARD_WIDTH / 2, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT),
       renderer(BOARD_WIDTH, BOARD_HEIGHT),
       score(0), highScore(0), state(PLAYING),
-      frameController(5), // 5 FPS for snake game
+      frameController(10),
+      specialFoodActive(false),
+      specialFoodTimer(0),
+      specialFoodPoints(30),
       rng(std::random_device{}()) {
     loadHighScore();
     generateFood();
 }
 
 void Game::generateFood() {
-    int attempts = 0;
     do {
         std::uniform_int_distribution<int> distX(0, BOARD_WIDTH - 1);
         std::uniform_int_distribution<int> distY(0, BOARD_HEIGHT - 1);
         food = Position(distX(rng), distY(rng));
-        attempts++;
-        // Prevent infinite loop
-        if (attempts > BOARD_WIDTH * BOARD_HEIGHT) {
-            // Try to find any available position
-            for (int y = 0; y < BOARD_HEIGHT; y++) {
-                for (int x = 0; x < BOARD_WIDTH; x++) {
-                    if (!snake.isOnPosition(x, y)) {
-                        food = Position(x, y);
-                        return;
-                    }
-                }
-            }
-            // If no space found, place at (0,0) as fallback
-            food = Position(0, 0);
-            break;
-        }
     } while (snake.isOnPosition(food.x, food.y));
+}
+
+void Game::generateSpecialFood() {
+    // Only generate special food if it's not already active
+    if (!specialFoodActive) {
+        int attempts = 0;
+        do {
+            std::uniform_int_distribution<int> distX(0, BOARD_WIDTH - 1);
+            std::uniform_int_distribution<int> distY(0, BOARD_HEIGHT - 1);
+            specialFood = Position(distX(rng), distY(rng));
+            attempts++;
+            
+            // Prevent infinite loop
+            if (attempts > BOARD_WIDTH * BOARD_HEIGHT) {
+                break;
+            }
+        } while (snake.isOnPosition(specialFood.x, specialFood.y) || 
+                (specialFood.x == food.x && specialFood.y == food.y));
+        
+        specialFoodActive = true;
+        specialFoodTimer = 150; // Special food lasts for 150 frames (about 15 seconds at 10 FPS)
+    }
 }
 
 void Game::handleInput() {
@@ -45,35 +53,35 @@ void Game::handleInput() {
     int key = getch();
     
     // Handle escape sequences for arrow keys (Linux/macOS)
-    if (key == 27) { // Escape character
+    if (key == 27) {
         if (!kbhit()) return;
         int key2 = getch();
-        if (key2 == 91) { // [
+        if (key2 == 91) {
             if (!kbhit()) return;
             int key3 = getch();
             if (state == PLAYING) {
                 switch (key3) {
-                    case 65: snake.changeDirection(UP); break;    // Up arrow
-                    case 66: snake.changeDirection(DOWN); break;  // Down arrow
-                    case 67: snake.changeDirection(RIGHT); break; // Right arrow
-                    case 68: snake.changeDirection(LEFT); break;  // Left arrow
+                    case 65: snake.changeDirection(UP); break;
+                    case 66: snake.changeDirection(DOWN); break;
+                    case 67: snake.changeDirection(RIGHT); break;
+                    case 68: snake.changeDirection(LEFT); break;
                 }
             }
         }
         return;
     }
     
-    // Handle regular keys - using if-else to avoid duplicate values
-    if (key == 'w' || key == 'W' || key == 72) { // Up arrow (Windows)
+    // Handle regular keys
+    if (key == 'w' || key == 'W' || key == 72) {
         if (state == PLAYING) snake.changeDirection(UP);
     }
-    else if (key == 's' || key == 'S' || key == 80) { // Down arrow (Windows)
+    else if (key == 's' || key == 'S' || key == 80) {
         if (state == PLAYING) snake.changeDirection(DOWN);
     }
-    else if (key == 'a' || key == 'A' || key == 75) { // Left arrow (Windows)
+    else if (key == 'a' || key == 'A' || key == 75) {
         if (state == PLAYING) snake.changeDirection(LEFT);
     }
-    else if (key == 'd' || key == 'D' || key == 77) { // Right arrow (Windows)
+    else if (key == 'd' || key == 'D' || key == 77) {
         if (state == PLAYING) snake.changeDirection(RIGHT);
     }
     else if (key == 'p' || key == 'P') {
@@ -81,11 +89,10 @@ void Game::handleInput() {
             state = (state == PLAYING) ? PAUSED : PLAYING;
         }
     }
-    else if (key == ' ' || key == 'r' || key == 'R') { // Space or R to restart
+    else if (key == ' ' || key == 'r' || key == 'R') {
         if (state == GAME_OVER) {
             resetGame();
         } else if (state == PLAYING || state == PAUSED) {
-            // Allow restart during gameplay too
             resetGame();
         }
     }
@@ -107,18 +114,40 @@ void Game::update() {
         return;
     }
     
-    // Check if snake ate food
+    // Check if snake ate regular food
     if (snake.getHead().x == food.x && snake.getHead().y == food.y) {
         snake.grow();
         score += 10;
-        
-        // Increase speed slightly as score increases
-        // Remove the FPS adjustment for now since we don't have getter/setter
-        // if (score % 50 == 0 && frameController.getTargetFPS() < 20) {
-        //     frameController.setTargetFPS(frameController.getTargetFPS() + 1);
-        // }
-        
         generateFood();
+        
+        // Check if we should spawn special food (every 30 points)
+        if (score % 30 == 0 && score > 0) {
+            generateSpecialFood();
+        }
+    }
+    
+    // Check if snake ate special food
+    if (specialFoodActive && 
+        snake.getHead().x == specialFood.x && snake.getHead().y == specialFood.y) {
+        snake.grow();
+        score += specialFoodPoints;
+        specialFoodActive = false;
+        
+        // Add bonus growth for special food
+        snake.grow(); // Extra segment for special food
+        
+        // Update high score if needed
+        if (score > highScore) {
+            highScore = score;
+        }
+    }
+    
+    // Update special food timer
+    if (specialFoodActive) {
+        specialFoodTimer--;
+        if (specialFoodTimer <= 0) {
+            specialFoodActive = false; // Special food disappears
+        }
     }
 }
 
@@ -126,11 +155,9 @@ void Game::resetGame() {
     snake = Snake(BOARD_WIDTH / 2, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT);
     score = 0;
     state = PLAYING;
-    // frameController.setTargetFPS(10); // Remove for now
+    specialFoodActive = false;
+    specialFoodTimer = 0;
     generateFood();
-    
-    // Clear any leftover input
-    // clearInputBuffer(); // Remove for now - function doesn't exist
 }
 
 void Game::saveHighScore() {
@@ -152,50 +179,37 @@ void Game::loadHighScore() {
 void Game::run() {
     bool running = true;
     
-    // Clear any initial input buffer
-    // clearInputBuffer(); // Remove for now
-    
     while (running) {
         frameController.startFrame();
         
         handleInput();
         
-        // Check if we should exit
-        if (state == GAME_OVER) {
-            // Check for quit command
-            if (kbhit()) {
-                int key = getch();
-                if (key == 'q' || key == 'Q') {
-                    running = false;
-                    continue;
-                }
-            }
-        }
-        
         switch (state) {
             case PLAYING:
                 update();
-                renderer.render(snake, food, score, highScore, false);
+                renderer.render(snake, food, specialFood, specialFoodActive, score, highScore, false);
                 break;
             case PAUSED:
-                renderer.render(snake, food, score, highScore, true);
+                renderer.render(snake, food, specialFood, specialFoodActive, score, highScore, true);
                 break;
             case GAME_OVER:
                 renderer.renderGameOver(score, highScore);
-                // Check for restart input with small delay to prevent instant restart
-                sleepMs(600);
                 if (kbhit()) {
                     int key = getch();
                     if (key == ' ' || key == 'r' || key == 'R') {
                         resetGame();
+                    } else if (key == 'q' || key == 'Q') {
+                        running = false;
                     }
                 }
                 break;
         }
         
         frameController.endFrame();
+        
+        // Game speed
+        sleepMs(150);
     }
     
-    // Save high score when exiting
     saveHighScore();
 }

@@ -16,8 +16,9 @@ private:
 public:
     Renderer(int width, int height);
     
-    // Make sure these match the implementation
-    void render(const Snake& snake, const Position& food, int score, int highScore, bool paused);
+    // Updated to include special food
+    void render(const Snake& snake, const Position& food, const Position& specialFood, 
+                bool specialFoodActive, int score, int highScore, bool paused = false);
     void renderGameOver(int score, int highScore);
     void renderMenu();
 };
