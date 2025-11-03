@@ -10,8 +10,8 @@ enum GameState { MENU, PLAYING, PAUSED, GAME_OVER };
 
 class Game {
 private:
-    static const int BOARD_WIDTH = 16;
-    static const int BOARD_HEIGHT = 16;
+    static const int BOARD_WIDTH = 30;
+    static const int BOARD_HEIGHT = 30;
     
     Snake snake;
     Renderer renderer;
