@@ -5,7 +5,7 @@
 
 Renderer::Renderer(int width, int height) 
     : boardWidth(width), boardHeight(height) {
-    screenBuffer.resize(boardHeight + 6);
+    screenBuffer.resize(boardHeight + 7);
 }
 
 void Renderer::clearBuffer() {
@@ -24,7 +24,8 @@ void Renderer::drawToBuffer(int x, int y, const std::string& content) {
 }
 
 void Renderer::render(const Snake& snake, const Position& food, const Position& specialFood, 
-                     bool specialFoodActive, int score, int highScore, bool paused,
+                     bool specialFoodActive, int specialFoodTimer, int specialFoodMaxTimer,
+                     int score, int highScore, bool paused,
                      const std::vector<Position>& obstacles) {
     clearBuffer();
     
@@ -80,13 +81,31 @@ void Renderer::render(const Snake& snake, const Position& food, const Position& 
     // Legend line to confirm obstacles are active
     drawToBuffer(0, bufferY++, std::string("Legend: 🐍 head 🟢 body 🍎 food 🌟 special 🧱 obstacle") + "    ");
     
-    // Special food indicator
-    if (specialFoodActive) {
+    // Special food indicator + emoji timeline
+    if (specialFoodActive && specialFoodTimer > 0) {
         std::string specialInfo = "🌟 SPECIAL FOOD ACTIVE! +30 points!";
         drawToBuffer(0, bufferY++, specialInfo + "      ");
+
+        int barWidth = 30;
+        int clampedMax = specialFoodMaxTimer > 0 ? specialFoodMaxTimer : 1;
+        if (specialFoodTimer < 0) specialFoodTimer = 0;
+        if (specialFoodTimer > clampedMax) specialFoodTimer = clampedMax;
+        double fraction = static_cast<double>(specialFoodTimer) / static_cast<double>(clampedMax);
+        int filled = static_cast<int>(fraction * barWidth + 0.5);
+        if (filled < 0) filled = 0;
+        if (filled > barWidth) filled = barWidth;
+
+        std::string bar = "⏳[";
+        for (int i = 0; i < filled; ++i) bar += "█";
+        for (int i = 0; i < barWidth - filled; ++i) bar += " ";
+        bar += "] ";
+        std::stringstream remain;
+        remain << bar << specialFoodTimer << "/" << clampedMax;
+        drawToBuffer(0, bufferY++, remain.str() + "      ");
     } else {
-        // Clear the special food line
-        drawToBuffer(0, bufferY++, "                                    ");
+        // Clear the special food lines (two lines) with plenty of spaces to overwrite any previous content
+        drawToBuffer(0, bufferY++, "                                                                                                    ");
+        drawToBuffer(0, bufferY++, "                                                                                                    ");
     }
     
     std::string controls = "🎮 Controls: WASD/Arrow Keys | ⏸️  P | 🔄 R | ❌ Q";

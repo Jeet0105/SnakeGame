@@ -28,6 +28,7 @@ private:
     bool specialFoodActive;  // New: Track if special food is active
     int specialFoodTimer;    // New: Timer for special food
     int specialFoodPoints;   // New: Points for special food
+    int specialFoodMaxTimer; // New: Max timer for special food (for timeline)
     
     void generateFood();
     void generateSpecialFood();  // New: Generate special food
