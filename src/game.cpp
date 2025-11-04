@@ -13,6 +13,7 @@ Game::Game()
       specialFoodActive(false),
       specialFoodTimer(0),
       specialFoodPoints(30),
+      specialFoodMaxTimer(50),
       rng(std::random_device{}()) {
     loadHighScore();
     generateFood();
@@ -51,7 +52,7 @@ void Game::generateSpecialFood() {
                 std::find(obstacles.begin(), obstacles.end(), specialFood) != obstacles.end());
         
         specialFoodActive = true;
-        specialFoodTimer = 150; // Special food lasts for 150 frames (about 15 seconds at 10 FPS)
+        specialFoodTimer = specialFoodMaxTimer; // 5 seconds at ~10 FPS
     }
 }
 
@@ -164,6 +165,7 @@ void Game::update() {
         snake.grow();
         score += specialFoodPoints;
         specialFoodActive = false;
+        specialFoodTimer = 0;
         
         // Add bonus growth for special food
         snake.grow(); // Extra segment for special food
@@ -179,6 +181,7 @@ void Game::update() {
         specialFoodTimer--;
         if (specialFoodTimer <= 0) {
             specialFoodActive = false; // Special food disappears
+            specialFoodTimer = 0;
         }
     }
 }
@@ -223,10 +226,10 @@ void Game::run() {
         switch (state) {
             case PLAYING:
                 update();
-                renderer.render(snake, food, specialFood, specialFoodActive, score, highScore, false, obstacles);
+                renderer.render(snake, food, specialFood, specialFoodActive, specialFoodTimer, specialFoodMaxTimer, score, highScore, false, obstacles);
                 break;
             case PAUSED:
-                renderer.render(snake, food, specialFood, specialFoodActive, score, highScore, true, obstacles);
+                renderer.render(snake, food, specialFood, specialFoodActive, specialFoodTimer, specialFoodMaxTimer, score, highScore, true, obstacles);
                 break;
             case GAME_OVER:
                 renderer.renderGameOver(score, highScore);
