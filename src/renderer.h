@@ -18,7 +18,8 @@ public:
     
     // Updated to include special food
     void render(const Snake& snake, const Position& food, const Position& specialFood, 
-                bool specialFoodActive, int score, int highScore, bool paused = false);
+                bool specialFoodActive, int score, int highScore, bool paused = false,
+                const std::vector<Position>& obstacles = {});
     void renderGameOver(int score, int highScore);
     void renderMenu();
 };

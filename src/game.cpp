@@ -3,6 +3,7 @@
 #include <iostream>
 #include <random>
 #include <fstream>
+#include <algorithm>
 
 Game::Game() 
     : snake(BOARD_WIDTH / 2, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT),
@@ -15,6 +16,11 @@ Game::Game()
       rng(std::random_device{}()) {
     loadHighScore();
     generateFood();
+    // Place 5-7 obstacles
+    {
+        std::uniform_int_distribution<int> obc(5, 7);
+        generateObstacles(obc(rng));
+    }
 }
 
 void Game::generateFood() {
@@ -22,7 +28,8 @@ void Game::generateFood() {
         std::uniform_int_distribution<int> distX(0, BOARD_WIDTH - 1);
         std::uniform_int_distribution<int> distY(0, BOARD_HEIGHT - 1);
         food = Position(distX(rng), distY(rng));
-    } while (snake.isOnPosition(food.x, food.y));
+    } while (snake.isOnPosition(food.x, food.y) ||
+             std::find(obstacles.begin(), obstacles.end(), food) != obstacles.end());
 }
 
 void Game::generateSpecialFood() {
@@ -40,10 +47,26 @@ void Game::generateSpecialFood() {
                 break;
             }
         } while (snake.isOnPosition(specialFood.x, specialFood.y) || 
-                (specialFood.x == food.x && specialFood.y == food.y));
+                (specialFood.x == food.x && specialFood.y == food.y) ||
+                std::find(obstacles.begin(), obstacles.end(), specialFood) != obstacles.end());
         
         specialFoodActive = true;
         specialFoodTimer = 150; // Special food lasts for 150 frames (about 15 seconds at 10 FPS)
+    }
+}
+
+void Game::generateObstacles(int count) {
+    obstacles.clear();
+    std::uniform_int_distribution<int> distX(0, BOARD_WIDTH - 1);
+    std::uniform_int_distribution<int> distY(0, BOARD_HEIGHT - 1);
+    int attempts = 0;
+    while ((int)obstacles.size() < count && attempts < count * 20) {
+        Position p(distX(rng), distY(rng));
+        attempts++;
+        if (snake.isOnPosition(p.x, p.y)) continue;
+        if (p == food || (specialFoodActive && p == specialFood)) continue;
+        if (std::find(obstacles.begin(), obstacles.end(), p) != obstacles.end()) continue;
+        obstacles.push_back(p);
     }
 }
 
@@ -113,6 +136,15 @@ void Game::update() {
         }
         return;
     }
+    // Obstacle collision
+    if (std::find(obstacles.begin(), obstacles.end(), snake.getHead()) != obstacles.end()) {
+        state = GAME_OVER;
+        if (score > highScore) {
+            highScore = score;
+            saveHighScore();
+        }
+        return;
+    }
     
     // Check if snake ate regular food
     if (snake.getHead().x == food.x && snake.getHead().y == food.y) {
@@ -158,6 +190,10 @@ void Game::resetGame() {
     specialFoodActive = false;
     specialFoodTimer = 0;
     generateFood();
+    {
+        std::uniform_int_distribution<int> obc(5, 7);
+        generateObstacles(obc(rng));
+    }
 }
 
 void Game::saveHighScore() {
@@ -187,10 +223,10 @@ void Game::run() {
         switch (state) {
             case PLAYING:
                 update();
-                renderer.render(snake, food, specialFood, specialFoodActive, score, highScore, false);
+                renderer.render(snake, food, specialFood, specialFoodActive, score, highScore, false, obstacles);
                 break;
             case PAUSED:
-                renderer.render(snake, food, specialFood, specialFoodActive, score, highScore, true);
+                renderer.render(snake, food, specialFood, specialFoodActive, score, highScore, true, obstacles);
                 break;
             case GAME_OVER:
                 renderer.renderGameOver(score, highScore);

@@ -24,7 +24,8 @@ void Renderer::drawToBuffer(int x, int y, const std::string& content) {
 }
 
 void Renderer::render(const Snake& snake, const Position& food, const Position& specialFood, 
-                     bool specialFoodActive, int score, int highScore, bool paused) {
+                     bool specialFoodActive, int score, int highScore, bool paused,
+                     const std::vector<Position>& obstacles) {
     clearBuffer();
     
     int bufferY = 0;
@@ -40,14 +41,20 @@ void Renderer::render(const Snake& snake, const Position& food, const Position& 
     topBorder += "🔶";
     drawToBuffer(0, bufferY++, topBorder);
     
-    // Game board with special food
+    // Game board with special food and obstacles
     for (int y = 0; y < boardHeight; y++) {
         std::string line = "🔹";
         for (int x = 0; x < boardWidth; x++) {
+            bool isObstacle = false;
+            for (const auto& ob : obstacles) {
+                if (ob.x == x && ob.y == y) { isObstacle = true; break; }
+            }
             if (snake.getHead().x == x && snake.getHead().y == y) {
                 line += "🐍";
             } else if (snake.isOnPosition(x, y)) {
                 line += "🟢";
+            } else if (isObstacle) {
+                line += "🧱"; // obstacle
             } else if (specialFoodActive && specialFood.x == x && specialFood.y == y) {
                 line += "🌟";  // Special food - star emoji
             } else if (food.x == x && food.y == y) {
@@ -70,6 +77,8 @@ void Renderer::render(const Snake& snake, const Position& food, const Position& 
     std::stringstream scoreInfo;
     scoreInfo << "📊 Score: " << score << " | 📏 Length: " << snake.getLength();
     drawToBuffer(0, bufferY++, scoreInfo.str() + "          ");
+    // Legend line to confirm obstacles are active
+    drawToBuffer(0, bufferY++, std::string("Legend: 🐍 head 🟢 body 🍎 food 🌟 special 🧱 obstacle") + "    ");
     
     // Special food indicator
     if (specialFoodActive) {

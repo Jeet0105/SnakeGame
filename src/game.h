@@ -5,18 +5,20 @@
 #include "renderer.h"
 #include "utils.h"
 #include <random>
+#include <vector>
 
 enum GameState { MENU, PLAYING, PAUSED, GAME_OVER };
 
 class Game {
 private:
-    static const int BOARD_WIDTH = 16;
-    static const int BOARD_HEIGHT = 16;
+    static const int BOARD_WIDTH = 32;
+    static const int BOARD_HEIGHT = 24;
     
     Snake snake;
     Renderer renderer;
     Position food;
     Position specialFood;  // New: Special food position
+    std::vector<Position> obstacles; // New: Obstacles
     int score;
     int highScore;
     GameState state;
@@ -29,6 +31,7 @@ private:
     
     void generateFood();
     void generateSpecialFood();  // New: Generate special food
+    void generateObstacles(int count); // New: Generate obstacles
     void handleInput();
     void update();
     void resetGame();
