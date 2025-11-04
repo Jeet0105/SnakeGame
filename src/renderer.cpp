@@ -24,7 +24,8 @@ void Renderer::drawToBuffer(int x, int y, const std::string& content) {
 }
 
 void Renderer::render(const Snake& snake, const Position& food, const Position& specialFood, 
-                     bool specialFoodActive, int score, int highScore, bool paused) {
+                     bool specialFoodActive, int specialFoodTimer, int specialFoodDuration,
+                     int score, int highScore, bool paused) {
     clearBuffer();
     
     int bufferY = 0;
@@ -71,10 +72,24 @@ void Renderer::render(const Snake& snake, const Position& food, const Position& 
     scoreInfo << "📊 Score: " << score << " | 📏 Length: " << snake.getLength();
     drawToBuffer(0, bufferY++, scoreInfo.str() + "          ");
     
-    // Special food indicator
-    if (specialFoodActive) {
-        std::string specialInfo = "🌟 SPECIAL FOOD ACTIVE! +30 points!";
-        drawToBuffer(0, bufferY++, specialInfo + "      ");
+    // Special food indicator with timeline
+    if (specialFoodActive && specialFoodDuration > 0) {
+        double ratio = static_cast<double>(specialFoodTimer) / static_cast<double>(specialFoodDuration);
+        if (ratio < 0.0) ratio = 0.0;
+        if (ratio > 1.0) ratio = 1.0;
+
+        int barWidth = boardWidth; // match board width
+        int filled = static_cast<int>(barWidth * ratio);
+        std::string bar = "[";
+        for (int i = 0; i < barWidth; ++i) {
+            bar += (i < filled) ? "🟩" : "⬜";
+        }
+        bar += "]";
+
+        int approxSeconds = specialFoodTimer / 10; // assuming ~10 FPS
+        std::stringstream specialInfo;
+        specialInfo << "🌟 SPECIAL FOOD +30 | " << approxSeconds << "s left " << bar;
+        drawToBuffer(0, bufferY++, specialInfo.str() + "      ");
     } else {
         // Clear the special food line
         drawToBuffer(0, bufferY++, "                                    ");
@@ -96,7 +111,7 @@ void Renderer::render(const Snake& snake, const Position& food, const Position& 
     // Output the entire buffer
     for (const auto& line : screenBuffer) {
         if (!line.empty()) {
-            std::cout << line << "\n";
+            std::cout << line << "\033[K\n"; // clear to end of line to avoid leftovers
         }
     }
     
