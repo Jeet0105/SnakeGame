@@ -123,6 +123,7 @@ void Game::handleInput() {
     else if (key == 'q' || key == 'Q') {
         saveHighScore();
         state = GAME_OVER;
+        exit(0);
     }
 }
 
