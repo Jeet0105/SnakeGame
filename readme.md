@@ -44,7 +44,10 @@ Control your snake to eat food and grow longer while avoiding collisions. The lo
 | **Quit Game** | `Q` | - |
 
 ### 🎯 Features
-- **Smooth Gameplay**: Optimized rendering with no flickering
+- **Smooth Gameplay**: Optimized rendering with minimal flicker
+- **Emoji UI**: Colorful borders, snake, food, and obstacles
+- **Special Food**: Time-limited bonus with on-screen countdown bar
+- **Obstacles**: Random bricks you must avoid (configurable count)
 - **High Score Tracking**: Automatically saves your best scores
 - **Instant Restart**: Quick game reset without delays
 - **Pause Function**: Take breaks anytime during gameplay
@@ -142,8 +145,8 @@ g++ -std=c++11 -O2 src/*.cpp -o snake_game
 # Windows
 g++ -std=c++11 -O2 src/*.cpp -o snake_game.exe
 
-# Linux/macOS (with terminal library)
-g++ -std=c++11 -O2 src/*.cpp -o snake_game -ltermios
+# Linux/macOS
+g++ -std=c++11 -O2 src/*.cpp -o snake_game
 ```
 
 #### Build Options

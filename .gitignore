@@ -1,3 +1,76 @@
+# Build artifacts
+/build/
+/build*/
+/bin/
+/out/
+/dist/
+/.cache/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake-build-*/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+
+# Visual Studio / MSVC
+.vs/
+*.sln
+*.vcxproj*
+*.user
+*.pdb
+*.ilk
+*.obj
+*.idb
+*.ipdb
+*.iobj
+*.log
+*.tlog
+*.lastbuildstate
+*.opendb
+*.VC.db
+*.pch
+*.rsp
+*.o
+*.a
+
+# Compiled binaries
+*.exe
+*.dll
+*.lib
+*.so
+*.dylib
+*.out
+
+# Project binaries by name (root)
+/snake_game
+/snake_game.exe
+/snake_game_debug
+/snake_game_fast
+/snake_game_small
+/snake_game*.exe
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor/IDE
+*.swp
+*.swo
+*.tmp
+*.cache
+.vscode/
+.idea/
+
+# Runtime data
+highscore.txt
+
+# Misc
+*.bak
+*.old
 snake_game
 snake_game.exe
 *.exe
