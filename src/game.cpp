@@ -4,17 +4,22 @@
 #include <random>
 #include <fstream>
 #include <algorithm>
+#include <limits>
+#include <string>
 
 Game::Game() 
     : snake(BOARD_WIDTH / 2, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT),
       renderer(BOARD_WIDTH, BOARD_HEIGHT),
-      score(0), highScore(0), state(PLAYING),
+      score(0), highScore(0), state(MENU),
       frameController(10),
       specialFoodActive(false),
       specialFoodTimer(0),
       specialFoodPoints(30),
       specialFoodMaxTimer(50),
-      rng(std::random_device{}()) {
+      rng(std::random_device{}()),
+      playerName(""),
+      highScoreName(""),
+      specialFoodCount(0) {
     loadHighScore();
     generateFood();
     // Place 5-7 obstacles
@@ -76,6 +81,23 @@ void Game::handleInput() {
     
     int key = getch();
     
+    // Menu input
+    if (state == MENU) {
+        if (key == '1') {
+            askPlayerName();
+            resetGame();
+            state = PLAYING;
+        } else if (key == '2') {
+            renderer.renderHighScore(highScoreName, highScore);
+            (void)getch();
+            renderer.renderMenu();
+        } else if (key == '3' || key == 'q' || key == 'Q') {
+            saveHighScore();
+            exit(0);
+        }
+        return;
+    }
+    
     // Handle escape sequences for arrow keys (Linux/macOS)
     if (key == 27) {
         if (!kbhit()) return;
@@ -115,7 +137,8 @@ void Game::handleInput() {
     }
     else if (key == ' ' || key == 'r' || key == 'R') {
         if (state == GAME_OVER) {
-            resetGame();
+            state = MENU;
+            renderer.renderMenu();
         } else if (state == PLAYING || state == PAUSED) {
             resetGame();
         }
@@ -134,8 +157,10 @@ void Game::update() {
         state = GAME_OVER;
         if (score > highScore) {
             highScore = score;
+            highScoreName = playerName;
             saveHighScore();
         }
+        saveScoreEntry();
         return;
     }
     // Obstacle collision
@@ -143,8 +168,10 @@ void Game::update() {
         state = GAME_OVER;
         if (score > highScore) {
             highScore = score;
+            highScoreName = playerName;
             saveHighScore();
         }
+        saveScoreEntry();
         return;
     }
     
@@ -167,6 +194,7 @@ void Game::update() {
         score += specialFoodPoints;
         specialFoodActive = false;
         specialFoodTimer = 0;
+        specialFoodCount++;
         
         // Add bonus growth for special food
         snake.grow(); // Extra segment for special food
@@ -174,6 +202,7 @@ void Game::update() {
         // Update high score if needed
         if (score > highScore) {
             highScore = score;
+            highScoreName = playerName;
         }
     }
     
@@ -190,6 +219,7 @@ void Game::update() {
 void Game::resetGame() {
     snake = Snake(BOARD_WIDTH / 2, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT);
     score = 0;
+    specialFoodCount = 0;
     state = PLAYING;
     specialFoodActive = false;
     specialFoodTimer = 0;
@@ -203,7 +233,8 @@ void Game::resetGame() {
 void Game::saveHighScore() {
     std::ofstream file("highscore.txt");
     if (file.is_open()) {
-        file << highScore;
+        file << (highScoreName.empty() ? std::string("Anonymous") : highScoreName) << "\n";
+        file << highScore << "\n";
         file.close();
     }
 }
@@ -211,13 +242,57 @@ void Game::saveHighScore() {
 void Game::loadHighScore() {
     std::ifstream file("highscore.txt");
     if (file.is_open()) {
-        file >> highScore;
+        // Try to read name on first line, score on second; support legacy single-number file
+        std::string firstLine;
+        if (std::getline(file, firstLine)) {
+            // Check if firstLine is an integer
+            try {
+                size_t idx = 0;
+                int val = std::stoi(firstLine, &idx);
+                if (idx == firstLine.size()) {
+                    // legacy: only score present
+                    highScore = val;
+                    highScoreName = "Anonymous";
+                } else {
+                    highScoreName = firstLine;
+                    int hs = 0;
+                    file >> hs;
+                    if (file) highScore = hs;
+                }
+            } catch (...) {
+                // not a pure number => treat as name then read score
+                highScoreName = firstLine;
+                int hs = 0;
+                file >> hs;
+                if (file) highScore = hs;
+            }
+        }
         file.close();
+    }
+}
+
+void Game::askPlayerName() {
+    clearScreen();
+    std::cout << "Enter your name: ";
+    std::cout.flush();
+    if (std::cin.peek() == '\n') std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    std::getline(std::cin, playerName);
+    if (playerName.empty()) playerName = "Player";
+}
+
+void Game::saveScoreEntry() {
+    std::ofstream log("scores.txt", std::ios::app);
+    if (log.is_open()) {
+        log << (playerName.empty() ? std::string("Player") : playerName) << "," << score << "\n";
+        log.close();
     }
 }
 
 void Game::run() {
     bool running = true;
+    
+    // show menu initially
+    renderer.renderMenu();
     
     while (running) {
         frameController.startFrame();
@@ -225,19 +300,23 @@ void Game::run() {
         handleInput();
         
         switch (state) {
+            case MENU:
+                // handled in input
+                break;
             case PLAYING:
                 update();
-                renderer.render(snake, food, specialFood, specialFoodActive, specialFoodTimer, specialFoodMaxTimer, score, highScore, false, obstacles);
+                renderer.render(snake, food, specialFood, specialFoodActive, specialFoodTimer, specialFoodMaxTimer, score, highScore, false, obstacles, specialFoodCount);
                 break;
             case PAUSED:
-                renderer.render(snake, food, specialFood, specialFoodActive, specialFoodTimer, specialFoodMaxTimer, score, highScore, true, obstacles);
+                renderer.render(snake, food, specialFood, specialFoodActive, specialFoodTimer, specialFoodMaxTimer, score, highScore, true, obstacles, specialFoodCount);
                 break;
             case GAME_OVER:
                 renderer.renderGameOver(score, highScore);
                 if (kbhit()) {
                     int key = getch();
                     if (key == ' ' || key == 'r' || key == 'R') {
-                        resetGame();
+                        state = MENU;
+                        renderer.renderMenu();
                     } else if (key == 'q' || key == 'Q') {
                         running = false;
                     }
