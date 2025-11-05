@@ -30,6 +30,11 @@ private:
     int specialFoodPoints;   // New: Points for special food
     int specialFoodMaxTimer; // New: Max timer for special food (for timeline)
     
+    // New: player/high score names and rare food counter
+    std::string playerName;
+    std::string highScoreName;
+    int specialFoodCount;
+    
     void generateFood();
     void generateSpecialFood();  // New: Generate special food
     void generateObstacles(int count); // New: Generate obstacles
@@ -38,6 +43,10 @@ private:
     void resetGame();
     void saveHighScore();
     void loadHighScore();
+    
+    // New helpers
+    void askPlayerName();
+    void saveScoreEntry();
     
 public:
     Game();
