@@ -26,7 +26,8 @@ void Renderer::drawToBuffer(int x, int y, const std::string& content) {
 void Renderer::render(const Snake& snake, const Position& food, const Position& specialFood, 
                      bool specialFoodActive, int specialFoodTimer, int specialFoodMaxTimer,
                      int score, int highScore, bool paused,
-                     const std::vector<Position>& obstacles) {
+                     const std::vector<Position>& obstacles,
+                     int specialFoodCount) {
     clearBuffer();
     
     static bool first = true;
@@ -80,9 +81,9 @@ void Renderer::render(const Snake& snake, const Position& food, const Position& 
         } else if (y == 1) {
             std::stringstream ss; ss << "📏 Length: " << snake.getLength(); sidebar += ss.str();
         } else if (y == 2) {
-            sidebar += "🎮 WASD/Arrows";
+            std::stringstream ss; ss << "🌟 Rare foods: " << specialFoodCount; sidebar += ss.str();
         } else if (y == 3) {
-            sidebar += "⏸ P  🔄 R  ❌ Q";
+            sidebar += "🎮 WASD/Arrows";
         } else if (y == 4) {
             sidebar += "Legend:";
         } else if (y == 5) {
@@ -175,7 +176,7 @@ void Renderer::renderGameOver(int score, int highScore) {
     clearScreen();
     std::cout << "\n💀 GAME OVER! 💀\n";
     std::cout << "🏆 Final Score: " << score << " | High Score: " << highScore << "\n";
-    std::cout << "🔄 Press SPACE or R to restart | ❌ Q to quit\n";
+    std::cout << "🔄 Press SPACE or R to return to menu | ❌ Q to quit\n";
     std::cout.flush();
 }
 
@@ -183,7 +184,17 @@ void Renderer::renderMenu() {
     clearScreen();
     std::cout << "🐍 === SNAKE GAME === 🐍\n";
     std::cout << "1. 🎮 Start Game\n";
-    std::cout << "2. ❌ Quit\n";
+    std::cout << "2. 🏆 Highest Score\n";
+    std::cout << "3. ❌ Exit\n";
     std::cout << "🎯 Select option: ";
+    std::cout.flush();
+}
+
+void Renderer::renderHighScore(const std::string& name, int highScore) {
+    clearScreen();
+    std::cout << "🏆 Highest Score\n";
+    std::cout << "👤 Player: " << (name.empty() ? std::string("Anonymous") : name) << "\n";
+    std::cout << "📊 Score : " << highScore << "\n\n";
+    std::cout << "↩️  Press any key to return to menu...";
     std::cout.flush();
 }

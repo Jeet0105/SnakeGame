@@ -20,9 +20,11 @@ public:
     void render(const Snake& snake, const Position& food, const Position& specialFood, 
                 bool specialFoodActive, int specialFoodTimer, int specialFoodMaxTimer,
                 int score, int highScore, bool paused = false,
-                const std::vector<Position>& obstacles = {});
+                const std::vector<Position>& obstacles = {},
+                int specialFoodCount = 0);
     void renderGameOver(int score, int highScore);
     void renderMenu();
+    void renderHighScore(const std::string& name, int highScore);
 };
 
 #endif
