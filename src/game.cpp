@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <limits>
 #include <string>
+#include <cstdlib>
 
 Game::Game() 
     : snake(BOARD_WIDTH / 2, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT),
@@ -93,7 +94,7 @@ void Game::handleInput() {
             renderer.renderMenu();
         } else if (key == '3' || key == 'q' || key == 'Q') {
             saveHighScore();
-            exit(0);
+            std::exit(0);
         }
         return;
     }
@@ -146,7 +147,7 @@ void Game::handleInput() {
     else if (key == 'q' || key == 'Q') {
         saveHighScore();
         state = GAME_OVER;
-        exit(0);
+        std::exit(0);
     }
 }
 

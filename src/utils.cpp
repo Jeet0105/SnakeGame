@@ -8,7 +8,8 @@ void sleepMs(int milliseconds) {
 #ifdef _WIN32
     Sleep(milliseconds);
 #else
-    usleep(milliseconds * 1000);
+    // Use standard C++ instead of deprecated usleep
+    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
 #endif
 }
 
