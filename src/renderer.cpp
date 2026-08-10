@@ -23,10 +23,11 @@ void Renderer::drawToBuffer(int x, int y, const std::string& content) {
     }
 }
 
-void Renderer::render(const Snake& snake, const Snake& snake2, const Position& food, const Position& specialFood, 
-            bool specialFoodActive, int specialFoodTimer, int specialFoodMaxTimer,
-            int score, int score2, int highScore, bool paused ,
-            const std::vector<Position>& obstacles , int specialFoodCount) {
+void Renderer::render(const Snake& snake, const Position& food, const Position& specialFood, 
+                     bool specialFoodActive, int specialFoodTimer, int specialFoodMaxTimer,
+                     int score, int highScore, bool paused,
+                     const std::vector<Position>& obstacles,
+                     int specialFoodCount) {
     clearBuffer();
     
     static bool first = true;
@@ -60,12 +61,8 @@ void Renderer::render(const Snake& snake, const Snake& snake2, const Position& f
             }
             if (snake.getHead().x == x && snake.getHead().y == y) {
                 line += "🐍";
-            } else if (snake2.getHead().x == x && snake2.getHead().y == y) {
-                line += "🐲";
             } else if (snake.isOnPosition(x, y)) {
                 line += "🟢";
-            } else if (snake2.isOnPosition(x, y)) {
-                line += "🔵";
             } else if (isObstacle) {
                 line += "🧱"; // obstacle
             } else if (specialFoodActive && specialFood.x == x && specialFood.y == y) {
@@ -80,13 +77,9 @@ void Renderer::render(const Snake& snake, const Snake& snake2, const Position& f
         // Right-side panel content aligned with board rows
         std::string sidebar = "  ";
         if (y == 0) {
-            std::stringstream ss;
-            ss << "📊 P1 Score: " << score;
-            sidebar += ss.str();
+            std::stringstream ss; ss << "📊 Score: " << score; sidebar += ss.str();
         } else if (y == 1) {
-            std::stringstream ss;
-            ss << "📊 P2 Score: " << score2;
-            sidebar += ss.str();
+            std::stringstream ss; ss << "📏 Length: " << snake.getLength(); sidebar += ss.str();
         } else if (y == 2) {
             std::stringstream ss; ss << "🌟 Rare foods: " << specialFoodCount; sidebar += ss.str();
         } else if (y == 3) {
@@ -122,11 +115,8 @@ void Renderer::render(const Snake& snake, const Snake& snake2, const Position& f
     
     // Footer info (padded)
     std::stringstream scoreInfo;
-    scoreInfo << pad
-          << "📊 P1: " << score
-          << "  P2: " << score2
-          << " | 📏 P1 Length: " << snake.getLength()
-          << "  P2 Length: " << snake2.getLength();
+    scoreInfo << pad << "📊 Score: " << score << " | 📏 Length: " << snake.getLength();
+    drawToBuffer(0, bufferY++, scoreInfo.str() + "          ");
     
     // Special food indicator + emoji timeline
     if (specialFoodActive && specialFoodTimer > 0) {
@@ -181,16 +171,12 @@ void Renderer::render(const Snake& snake, const Snake& snake2, const Position& f
     std::cout.flush();
 }
 
-void Renderer::renderGameOver(int score, int score2, int highScore, const std::string& loserMessage) {
+void Renderer::renderGameOver(int score, int highScore) {
     // Clear screen for game over (not every frame)
     clearScreen();
     std::cout << "\n💀 GAME OVER! 💀\n";
-    std::cout << loserMessage << "\n";
-    std::cout << "📊 P1 Score: " << score
-              << " | P2 Score: " << score2 << "\n";
-    std::cout << "🏆 High Score: " << highScore << "\n";
+    std::cout << "🏆 Final Score: " << score << " | High Score: " << highScore << "\n";
     std::cout << "🔄 Press SPACE or R to return to menu | ❌ Q to quit\n";
-
     std::cout.flush();
 }
 

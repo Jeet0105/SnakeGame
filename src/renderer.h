@@ -17,11 +17,12 @@ public:
     Renderer(int width, int height);
     
     // Updated to include special food
-    void render(const Snake& snake, const Snake& snake2, const Position& food, const Position& specialFood, 
-            bool specialFoodActive, int specialFoodTimer, int specialFoodMaxTimer,
-            int score, int score2, int highScore, bool paused = false,
-            const std::vector<Position>& obstacles = {}, int specialFoodCount = 0);
-    void renderGameOver(int score, int score2, int highScore, const std::string& loserMessage);
+    void render(const Snake& snake, const Position& food, const Position& specialFood, 
+                bool specialFoodActive, int specialFoodTimer, int specialFoodMaxTimer,
+                int score, int highScore, bool paused = false,
+                const std::vector<Position>& obstacles = {},
+                int specialFoodCount = 0);
+    void renderGameOver(int score, int highScore);
     void renderMenu();
     void renderHighScore(const std::string& name, int highScore);
 };

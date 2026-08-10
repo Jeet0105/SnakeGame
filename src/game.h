@@ -15,18 +15,15 @@ private:
     static const int BOARD_HEIGHT = 24;
     
     Snake snake;
-    Snake snake2;
     Renderer renderer;
     Position food;
     Position specialFood;  // New: Special food position
     std::vector<Position> obstacles; // New: Obstacles
     int score;
-    int score2;
     int highScore;
     GameState state;
     FrameRateController frameController;
     std::mt19937 rng;
-    std::string loserMessage;
     
     bool specialFoodActive;  // New: Track if special food is active
     int specialFoodTimer;    // New: Timer for special food
