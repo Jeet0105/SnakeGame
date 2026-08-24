@@ -16,10 +16,10 @@ private:
 public:
     Renderer(int width, int height);
     
-    // Updated to include special food
-    void render(const Snake& snake, const Position& food, const Position& specialFood, 
+    // Accepts collection of snakes and per-snake scores
+    void render(const std::vector<Snake>& snakes, const Position& food, const Position& specialFood, 
                 bool specialFoodActive, int specialFoodTimer, int specialFoodMaxTimer,
-                int score, int highScore, bool paused = false,
+                const std::vector<int>& scores, int highScore, bool paused = false,
                 const std::vector<Position>& obstacles = {},
                 int specialFoodCount = 0);
     void renderGameOver(int score, int highScore);

@@ -9,8 +9,7 @@
 #include <cstdlib>
 
 Game::Game() 
-    : snake(BOARD_WIDTH / 2, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT),
-      renderer(BOARD_WIDTH, BOARD_HEIGHT),
+    : renderer(BOARD_WIDTH, BOARD_HEIGHT),
       score(0), highScore(0), state(MENU),
       frameController(10),
       specialFoodActive(false),
@@ -21,9 +20,10 @@ Game::Game()
       playerName(""),
       highScoreName(""),
       specialFoodCount(0) {
+    snakes.push_back(Snake(BOARD_WIDTH / 2, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT));
+    scores.push_back(0);
     loadHighScore();
     generateFood();
-    // Place 5-7 obstacles
     {
         std::uniform_int_distribution<int> obc(5, 7);
         generateObstacles(obc(rng));
@@ -31,34 +31,46 @@ Game::Game()
 }
 
 void Game::generateFood() {
+    bool occupied = false;
     do {
         std::uniform_int_distribution<int> distX(0, BOARD_WIDTH - 1);
         std::uniform_int_distribution<int> distY(0, BOARD_HEIGHT - 1);
         food = Position(distX(rng), distY(rng));
-    } while (snake.isOnPosition(food.x, food.y) ||
-             std::find(obstacles.begin(), obstacles.end(), food) != obstacles.end());
+        
+        occupied = false;
+        for (const auto& s : snakes) {
+            if (s.isOnPosition(food.x, food.y)) { occupied = true; break; }
+        }
+        if (!occupied && std::find(obstacles.begin(), obstacles.end(), food) != obstacles.end()) {
+            occupied = true;
+        }
+    } while (occupied);
 }
 
 void Game::generateSpecialFood() {
-    // Only generate special food if it's not already active
     if (!specialFoodActive) {
         int attempts = 0;
+        bool occupied = false;
         do {
             std::uniform_int_distribution<int> distX(0, BOARD_WIDTH - 1);
             std::uniform_int_distribution<int> distY(0, BOARD_HEIGHT - 1);
             specialFood = Position(distX(rng), distY(rng));
             attempts++;
             
-            // Prevent infinite loop
             if (attempts > BOARD_WIDTH * BOARD_HEIGHT) {
                 break;
             }
-        } while (snake.isOnPosition(specialFood.x, specialFood.y) || 
-                (specialFood.x == food.x && specialFood.y == food.y) ||
-                std::find(obstacles.begin(), obstacles.end(), specialFood) != obstacles.end());
+            
+            occupied = false;
+            for (const auto& s : snakes) {
+                if (s.isOnPosition(specialFood.x, specialFood.y)) { occupied = true; break; }
+            }
+            if (specialFood.x == food.x && specialFood.y == food.y) occupied = true;
+            if (std::find(obstacles.begin(), obstacles.end(), specialFood) != obstacles.end()) occupied = true;
+        } while (occupied);
         
         specialFoodActive = true;
-        specialFoodTimer = specialFoodMaxTimer; // 5 seconds at ~10 FPS
+        specialFoodTimer = specialFoodMaxTimer;
     }
 }
 
@@ -70,7 +82,12 @@ void Game::generateObstacles(int count) {
     while ((int)obstacles.size() < count && attempts < count * 20) {
         Position p(distX(rng), distY(rng));
         attempts++;
-        if (snake.isOnPosition(p.x, p.y)) continue;
+        
+        bool occupied = false;
+        for (const auto& s : snakes) {
+            if (s.isOnPosition(p.x, p.y)) { occupied = true; break; }
+        }
+        if (occupied) continue;
         if (p == food || (specialFoodActive && p == specialFood)) continue;
         if (std::find(obstacles.begin(), obstacles.end(), p) != obstacles.end()) continue;
         obstacles.push_back(p);
@@ -106,32 +123,35 @@ void Game::handleInput() {
         if (key2 == 91) {
             if (!kbhit()) return;
             int key3 = getch();
-            if (state == PLAYING) {
+            if (state == PLAYING && !snakes.empty()) {
                 switch (key3) {
-                    case 65: snake.changeDirection(UP); break;
-                    case 66: snake.changeDirection(DOWN); break;
-                    case 67: snake.changeDirection(RIGHT); break;
-                    case 68: snake.changeDirection(LEFT); break;
+                    case 65: snakes[0].changeDirection(UP); break;
+                    case 66: snakes[0].changeDirection(DOWN); break;
+                    case 67: snakes[0].changeDirection(RIGHT); break;
+                    case 68: snakes[0].changeDirection(LEFT); break;
                 }
             }
         }
         return;
     }
     
-    // Handle regular keys
-    if (key == 'w' || key == 'W' || key == 72) {
-        if (state == PLAYING) snake.changeDirection(UP);
+    // Handle regular keys for snake[0]
+    if (state == PLAYING && !snakes.empty()) {
+        if (key == 'w' || key == 'W' || key == 72) {
+            snakes[0].changeDirection(UP);
+        }
+        else if (key == 's' || key == 'S' || key == 80) {
+            snakes[0].changeDirection(DOWN);
+        }
+        else if (key == 'a' || key == 'A' || key == 75) {
+            snakes[0].changeDirection(LEFT);
+        }
+        else if (key == 'd' || key == 'D' || key == 77) {
+            snakes[0].changeDirection(RIGHT);
+        }
     }
-    else if (key == 's' || key == 'S' || key == 80) {
-        if (state == PLAYING) snake.changeDirection(DOWN);
-    }
-    else if (key == 'a' || key == 'A' || key == 75) {
-        if (state == PLAYING) snake.changeDirection(LEFT);
-    }
-    else if (key == 'd' || key == 'D' || key == 77) {
-        if (state == PLAYING) snake.changeDirection(RIGHT);
-    }
-    else if (key == 'p' || key == 'P') {
+    
+    if (key == 'p' || key == 'P') {
         if (state == PLAYING || state == PAUSED) {
             state = (state == PLAYING) ? PAUSED : PLAYING;
         }
@@ -154,56 +174,59 @@ void Game::handleInput() {
 void Game::update() {
     if (state != PLAYING) return;
     
-    if (!snake.move()) {
-        state = GAME_OVER;
-        if (score > highScore) {
-            highScore = score;
-            highScoreName = playerName;
-            saveHighScore();
+    for (size_t i = 0; i < snakes.size(); ++i) {
+        if (!snakes[i].move()) {
+            state = GAME_OVER;
+            if (scores[i] > highScore) {
+                highScore = scores[i];
+                highScoreName = playerName;
+                saveHighScore();
+            }
+            score = scores[i];
+            saveScoreEntry();
+            return;
         }
-        saveScoreEntry();
-        return;
-    }
-    // Obstacle collision
-    if (std::find(obstacles.begin(), obstacles.end(), snake.getHead()) != obstacles.end()) {
-        state = GAME_OVER;
-        if (score > highScore) {
-            highScore = score;
-            highScoreName = playerName;
-            saveHighScore();
+        
+        // Obstacle collision
+        if (std::find(obstacles.begin(), obstacles.end(), snakes[i].getHead()) != obstacles.end()) {
+            state = GAME_OVER;
+            if (scores[i] > highScore) {
+                highScore = scores[i];
+                highScoreName = playerName;
+                saveHighScore();
+            }
+            score = scores[i];
+            saveScoreEntry();
+            return;
         }
-        saveScoreEntry();
-        return;
-    }
-    
-    // Check if snake ate regular food
-    if (snake.getHead().x == food.x && snake.getHead().y == food.y) {
-        snake.grow();
-        score += 10;
-        generateFood();
         
-        // Check if we should spawn special food (every 30 points)
-        if (score % 30 == 0 && score > 0) {
-            generateSpecialFood();
+        // Check if snake ate regular food
+        if (snakes[i].getHead().x == food.x && snakes[i].getHead().y == food.y) {
+            snakes[i].grow();
+            scores[i] += 10;
+            if (scores[i] > score) score = scores[i];
+            generateFood();
+            
+            if (scores[i] % 30 == 0 && scores[i] > 0) {
+                generateSpecialFood();
+            }
         }
-    }
-    
-    // Check if snake ate special food
-    if (specialFoodActive && 
-        snake.getHead().x == specialFood.x && snake.getHead().y == specialFood.y) {
-        snake.grow();
-        score += specialFoodPoints;
-        specialFoodActive = false;
-        specialFoodTimer = 0;
-        specialFoodCount++;
         
-        // Add bonus growth for special food
-        snake.grow(); // Extra segment for special food
-        
-        // Update high score if needed
-        if (score > highScore) {
-            highScore = score;
-            highScoreName = playerName;
+        // Check if snake ate special food
+        if (specialFoodActive && 
+            snakes[i].getHead().x == specialFood.x && snakes[i].getHead().y == specialFood.y) {
+            snakes[i].grow();
+            snakes[i].grow();
+            scores[i] += specialFoodPoints;
+            if (scores[i] > score) score = scores[i];
+            specialFoodActive = false;
+            specialFoodTimer = 0;
+            specialFoodCount++;
+            
+            if (scores[i] > highScore) {
+                highScore = scores[i];
+                highScoreName = playerName;
+            }
         }
     }
     
@@ -211,14 +234,17 @@ void Game::update() {
     if (specialFoodActive) {
         specialFoodTimer--;
         if (specialFoodTimer <= 0) {
-            specialFoodActive = false; // Special food disappears
+            specialFoodActive = false;
             specialFoodTimer = 0;
         }
     }
 }
 
 void Game::resetGame() {
-    snake = Snake(BOARD_WIDTH / 2, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT);
+    snakes.clear();
+    snakes.push_back(Snake(BOARD_WIDTH / 2, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT));
+    scores.clear();
+    scores.push_back(0);
     score = 0;
     specialFoodCount = 0;
     state = PLAYING;
@@ -243,15 +269,12 @@ void Game::saveHighScore() {
 void Game::loadHighScore() {
     std::ifstream file("highscore.txt");
     if (file.is_open()) {
-        // Try to read name on first line, score on second; support legacy single-number file
         std::string firstLine;
         if (std::getline(file, firstLine)) {
-            // Check if firstLine is an integer
             try {
                 size_t idx = 0;
                 int val = std::stoi(firstLine, &idx);
                 if (idx == firstLine.size()) {
-                    // legacy: only score present
                     highScore = val;
                     highScoreName = "Anonymous";
                 } else {
@@ -261,7 +284,6 @@ void Game::loadHighScore() {
                     if (file) highScore = hs;
                 }
             } catch (...) {
-                // not a pure number => treat as name then read score
                 highScoreName = firstLine;
                 int hs = 0;
                 file >> hs;
@@ -291,8 +313,6 @@ void Game::saveScoreEntry() {
 
 void Game::run() {
     bool running = true;
-    
-    // show menu initially
     renderer.renderMenu();
     
     while (running) {
@@ -302,14 +322,13 @@ void Game::run() {
         
         switch (state) {
             case MENU:
-                // handled in input
                 break;
             case PLAYING:
                 update();
-                renderer.render(snake, food, specialFood, specialFoodActive, specialFoodTimer, specialFoodMaxTimer, score, highScore, false, obstacles, specialFoodCount);
+                renderer.render(snakes, food, specialFood, specialFoodActive, specialFoodTimer, specialFoodMaxTimer, scores, highScore, false, obstacles, specialFoodCount);
                 break;
             case PAUSED:
-                renderer.render(snake, food, specialFood, specialFoodActive, specialFoodTimer, specialFoodMaxTimer, score, highScore, true, obstacles, specialFoodCount);
+                renderer.render(snakes, food, specialFood, specialFoodActive, specialFoodTimer, specialFoodMaxTimer, scores, highScore, true, obstacles, specialFoodCount);
                 break;
             case GAME_OVER:
                 renderer.renderGameOver(score, highScore);
@@ -326,8 +345,6 @@ void Game::run() {
         }
         
         frameController.endFrame();
-        
-        // Game speed
         sleepMs(150);
     }
     
