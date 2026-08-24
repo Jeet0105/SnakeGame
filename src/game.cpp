@@ -20,8 +20,10 @@ Game::Game()
       playerName(""),
       highScoreName(""),
       specialFoodCount(0) {
-    snakes.push_back(Snake(BOARD_WIDTH / 2, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT));
-    scores.push_back(0);
+    // Player 1 (Arrow keys) and Player 2 (WASD)
+    snakes.push_back(Snake(BOARD_WIDTH / 4, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT));
+    snakes.push_back(Snake((3 * BOARD_WIDTH) / 4, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT));
+    scores.assign(2, 0);
     loadHighScore();
     generateFood();
     {
@@ -116,14 +118,14 @@ void Game::handleInput() {
         return;
     }
     
-    // Handle escape sequences for arrow keys (Linux/macOS)
+    // Handle escape sequences for arrow keys (P1: Arrow keys)
     if (key == 27) {
         if (!kbhit()) return;
         int key2 = getch();
         if (key2 == 91) {
             if (!kbhit()) return;
             int key3 = getch();
-            if (state == PLAYING && !snakes.empty()) {
+            if (state == PLAYING && snakes.size() >= 1) {
                 switch (key3) {
                     case 65: snakes[0].changeDirection(UP); break;
                     case 66: snakes[0].changeDirection(DOWN); break;
@@ -135,20 +137,18 @@ void Game::handleInput() {
         return;
     }
     
-    // Handle regular keys for snake[0]
-    if (state == PLAYING && !snakes.empty()) {
-        if (key == 'w' || key == 'W' || key == 72) {
-            snakes[0].changeDirection(UP);
-        }
-        else if (key == 's' || key == 'S' || key == 80) {
-            snakes[0].changeDirection(DOWN);
-        }
-        else if (key == 'a' || key == 'A' || key == 75) {
-            snakes[0].changeDirection(LEFT);
-        }
-        else if (key == 'd' || key == 'D' || key == 77) {
-            snakes[0].changeDirection(RIGHT);
-        }
+    if (state == PLAYING) {
+        // Player 1 Windows Arrow Keys (extended keys 72, 80, 75, 77)
+        if (key == 72 && snakes.size() >= 1) snakes[0].changeDirection(UP);
+        else if (key == 80 && snakes.size() >= 1) snakes[0].changeDirection(DOWN);
+        else if (key == 75 && snakes.size() >= 1) snakes[0].changeDirection(LEFT);
+        else if (key == 77 && snakes.size() >= 1) snakes[0].changeDirection(RIGHT);
+        
+        // Player 2 WASD Keys
+        else if ((key == 'w' || key == 'W') && snakes.size() >= 2) snakes[1].changeDirection(UP);
+        else if ((key == 's' || key == 'S') && snakes.size() >= 2) snakes[1].changeDirection(DOWN);
+        else if ((key == 'a' || key == 'A') && snakes.size() >= 2) snakes[1].changeDirection(LEFT);
+        else if ((key == 'd' || key == 'D') && snakes.size() >= 2) snakes[1].changeDirection(RIGHT);
     }
     
     if (key == 'p' || key == 'P') {
@@ -174,37 +174,60 @@ void Game::handleInput() {
 void Game::update() {
     if (state != PLAYING) return;
     
+    // Move all snakes
     for (size_t i = 0; i < snakes.size(); ++i) {
         if (!snakes[i].move()) {
             state = GAME_OVER;
-            if (scores[i] > highScore) {
-                highScore = scores[i];
+            score = std::max(scores[0], scores[1]);
+            if (score > highScore) {
+                highScore = score;
                 highScoreName = playerName;
                 saveHighScore();
             }
-            score = scores[i];
             saveScoreEntry();
             return;
         }
+    }
+    
+    // Check collisions for each snake
+    for (size_t i = 0; i < snakes.size(); ++i) {
+        Position head = snakes[i].getHead();
         
         // Obstacle collision
-        if (std::find(obstacles.begin(), obstacles.end(), snakes[i].getHead()) != obstacles.end()) {
+        if (std::find(obstacles.begin(), obstacles.end(), head) != obstacles.end()) {
             state = GAME_OVER;
-            if (scores[i] > highScore) {
-                highScore = scores[i];
+            score = std::max(scores[0], scores[1]);
+            if (score > highScore) {
+                highScore = score;
                 highScoreName = playerName;
                 saveHighScore();
             }
-            score = scores[i];
             saveScoreEntry();
             return;
         }
         
-        // Check if snake ate regular food
+        // Inter-snake collision (colliding with another snake's body or head)
+        for (size_t j = 0; j < snakes.size(); ++j) {
+            if (i != j && snakes[j].isOnPosition(head.x, head.y)) {
+                state = GAME_OVER;
+                score = std::max(scores[0], scores[1]);
+                if (score > highScore) {
+                    highScore = score;
+                    highScoreName = playerName;
+                    saveHighScore();
+                }
+                saveScoreEntry();
+                return;
+            }
+        }
+    }
+    
+    // Check food consumption for all snakes
+    for (size_t i = 0; i < snakes.size(); ++i) {
         if (snakes[i].getHead().x == food.x && snakes[i].getHead().y == food.y) {
             snakes[i].grow();
             scores[i] += 10;
-            if (scores[i] > score) score = scores[i];
+            score = std::max(scores[0], scores[1]);
             generateFood();
             
             if (scores[i] % 30 == 0 && scores[i] > 0) {
@@ -212,19 +235,18 @@ void Game::update() {
             }
         }
         
-        // Check if snake ate special food
         if (specialFoodActive && 
             snakes[i].getHead().x == specialFood.x && snakes[i].getHead().y == specialFood.y) {
             snakes[i].grow();
             snakes[i].grow();
             scores[i] += specialFoodPoints;
-            if (scores[i] > score) score = scores[i];
+            score = std::max(scores[0], scores[1]);
             specialFoodActive = false;
             specialFoodTimer = 0;
             specialFoodCount++;
             
-            if (scores[i] > highScore) {
-                highScore = scores[i];
+            if (score > highScore) {
+                highScore = score;
                 highScoreName = playerName;
             }
         }
@@ -242,9 +264,9 @@ void Game::update() {
 
 void Game::resetGame() {
     snakes.clear();
-    snakes.push_back(Snake(BOARD_WIDTH / 2, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT));
-    scores.clear();
-    scores.push_back(0);
+    snakes.push_back(Snake(BOARD_WIDTH / 4, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT));
+    snakes.push_back(Snake((3 * BOARD_WIDTH) / 4, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT));
+    scores.assign(2, 0);
     score = 0;
     specialFoodCount = 0;
     state = PLAYING;
