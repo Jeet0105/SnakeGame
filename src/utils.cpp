@@ -15,7 +15,11 @@ void sleepMs(int milliseconds) {
 
 // High-resolution sleep using std::this_thread
 void highResSleepMs(int milliseconds) {
+#ifdef _WIN32
+    Sleep(milliseconds);
+#else
     std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+#endif
 }
 
 // Cross-platform keyboard hit detection

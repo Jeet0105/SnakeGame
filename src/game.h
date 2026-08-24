@@ -14,37 +14,36 @@ private:
     static const int BOARD_WIDTH = 32;
     static const int BOARD_HEIGHT = 24;
     
-    Snake snake;
+    std::vector<Snake> snakes; // Centralized collection: number of snakes defined in exactly one place
+    std::vector<int> scores;  // Scores per snake
     Renderer renderer;
     Position food;
-    Position specialFood;  // New: Special food position
-    std::vector<Position> obstacles; // New: Obstacles
+    Position specialFood;  // Special food position
+    std::vector<Position> obstacles; // Obstacles
     int score;
     int highScore;
     GameState state;
     FrameRateController frameController;
     std::mt19937 rng;
     
-    bool specialFoodActive;  // New: Track if special food is active
-    int specialFoodTimer;    // New: Timer for special food
-    int specialFoodPoints;   // New: Points for special food
-    int specialFoodMaxTimer; // New: Max timer for special food (for timeline)
+    bool specialFoodActive;  // Track if special food is active
+    int specialFoodTimer;    // Timer for special food
+    int specialFoodPoints;   // Points for special food
+    int specialFoodMaxTimer; // Max timer for special food
     
-    // New: player/high score names and rare food counter
     std::string playerName;
     std::string highScoreName;
     int specialFoodCount;
     
     void generateFood();
-    void generateSpecialFood();  // New: Generate special food
-    void generateObstacles(int count); // New: Generate obstacles
+    void generateSpecialFood();  // Generate special food
+    void generateObstacles(int count); // Generate obstacles
     void handleInput();
     void update();
     void resetGame();
     void saveHighScore();
     void loadHighScore();
     
-    // New helpers
     void askPlayerName();
     void saveScoreEntry();
     

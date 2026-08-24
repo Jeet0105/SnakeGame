@@ -15,7 +15,7 @@ void Renderer::clearBuffer() {
 }
 
 void Renderer::drawToBuffer(int x, int y, const std::string& content) {
-    if (y >= 0 && y < screenBuffer.size()) {
+    if (y >= 0 && y < static_cast<int>(screenBuffer.size())) {
         if (x + content.length() > screenBuffer[y].length()) {
             screenBuffer[y].resize(x + content.length(), ' ');
         }
@@ -23,9 +23,9 @@ void Renderer::drawToBuffer(int x, int y, const std::string& content) {
     }
 }
 
-void Renderer::render(const Snake& snake, const Position& food, const Position& specialFood, 
+void Renderer::render(const std::vector<Snake>& snakes, const Position& food, const Position& specialFood, 
                      bool specialFoodActive, int specialFoodTimer, int specialFoodMaxTimer,
-                     int score, int highScore, bool paused,
+                     const std::vector<int>& scores, int highScore, bool paused,
                      const std::vector<Position>& obstacles,
                      int specialFoodCount) {
     clearBuffer();
@@ -51,7 +51,7 @@ void Renderer::render(const Snake& snake, const Position& food, const Position& 
     topBorder += "🔶";
     drawToBuffer(0, bufferY++, topBorder);
     
-    // Game board with special food and obstacles
+    // Game board with snakes, special food, and obstacles
     for (int y = 0; y < boardHeight; y++) {
         std::string line = pad + "🔹";
         for (int x = 0; x < boardWidth; x++) {
@@ -59,14 +59,26 @@ void Renderer::render(const Snake& snake, const Position& food, const Position& 
             for (const auto& ob : obstacles) {
                 if (ob.x == x && ob.y == y) { isObstacle = true; break; }
             }
-            if (snake.getHead().x == x && snake.getHead().y == y) {
-                line += "🐍";
-            } else if (snake.isOnPosition(x, y)) {
-                line += "🟢";
+            
+            bool snakeRendered = false;
+            for (size_t sIdx = 0; sIdx < snakes.size(); ++sIdx) {
+                if (snakes[sIdx].getHead().x == x && snakes[sIdx].getHead().y == y) {
+                    line += (sIdx == 0) ? "🐍" : "👾";
+                    snakeRendered = true;
+                    break;
+                } else if (snakes[sIdx].isOnPosition(x, y)) {
+                    line += (sIdx == 0) ? "🟢" : "🟡";
+                    snakeRendered = true;
+                    break;
+                }
+            }
+            
+            if (snakeRendered) {
+                // already added emoji
             } else if (isObstacle) {
                 line += "🧱"; // obstacle
             } else if (specialFoodActive && specialFood.x == x && specialFood.y == y) {
-                line += "🌟";  // Special food - star emoji
+                line += "🌟";  // Special food
             } else if (food.x == x && food.y == y) {
                 line += "🍎";
             } else {
@@ -74,20 +86,24 @@ void Renderer::render(const Snake& snake, const Position& food, const Position& 
             }
         }
         line += "🔹";
-        // Right-side panel content aligned with board rows
+        
+        // Right-side panel content
         std::string sidebar = "  ";
+        int displayScore = scores.empty() ? 0 : scores[0];
         if (y == 0) {
-            std::stringstream ss; ss << "📊 Score: " << score; sidebar += ss.str();
-        } else if (y == 1) {
-            std::stringstream ss; ss << "📏 Length: " << snake.getLength(); sidebar += ss.str();
+            std::stringstream ss; ss << "📊 P1 Score: " << displayScore; sidebar += ss.str();
+        } else if (y == 1 && scores.size() > 1) {
+            std::stringstream ss; ss << "📊 P2 Score: " << scores[1]; sidebar += ss.str();
+        } else if (y == 1 && scores.size() <= 1 && !snakes.empty()) {
+            std::stringstream ss; ss << "📏 Length: " << snakes[0].getLength(); sidebar += ss.str();
         } else if (y == 2) {
             std::stringstream ss; ss << "🌟 Rare foods: " << specialFoodCount; sidebar += ss.str();
         } else if (y == 3) {
-            sidebar += "🎮 WASD/Arrows";
+            sidebar += (snakes.size() > 1) ? "🎮 P1:Arrows | P2:WASD" : "🎮 WASD/Arrows";
         } else if (y == 4) {
             sidebar += "Legend:";
         } else if (y == 5) {
-            sidebar += "🐍 head  🟢 body";
+            sidebar += (snakes.size() > 1) ? "P1:🐍🟢 P2:👾🟡" : "🐍 head  🟢 body";
         } else if (y == 6) {
             sidebar += "🍎 food  🌟 special";
         } else if (y == 7) {
@@ -115,10 +131,11 @@ void Renderer::render(const Snake& snake, const Position& food, const Position& 
     
     // Footer info (padded)
     std::stringstream scoreInfo;
-    scoreInfo << pad << "📊 Score: " << score << " | 📏 Length: " << snake.getLength();
+    int primaryLen = snakes.empty() ? 0 : snakes[0].getLength();
+    scoreInfo << pad << "📊 Score: " << (scores.empty() ? 0 : scores[0]) << " | 📏 Length: " << primaryLen;
     drawToBuffer(0, bufferY++, scoreInfo.str() + "          ");
     
-    // Special food indicator + emoji timeline
+    // Special food indicator + timeline
     if (specialFoodActive && specialFoodTimer > 0) {
         std::string specialInfo = pad + "🌟 SPECIAL FOOD ACTIVE! +30 points!";
         drawToBuffer(0, bufferY++, specialInfo + "      ");
@@ -140,7 +157,6 @@ void Renderer::render(const Snake& snake, const Position& food, const Position& 
         remain << bar << specialFoodTimer << "/" << clampedMax;
         drawToBuffer(0, bufferY++, pad + remain.str() + "      ");
     } else {
-        // Clear the special food lines (two lines) with plenty of spaces to overwrite any previous content
         drawToBuffer(0, bufferY++, pad + "                                                                                                  ");
         drawToBuffer(0, bufferY++, pad + "                                                                                                  ");
     }
@@ -151,14 +167,11 @@ void Renderer::render(const Snake& snake, const Position& food, const Position& 
     if (paused) {
         drawToBuffer(0, bufferY, pad + "⏸️  PAUSED - Press P to continue                    ");
     } else {
-        // Clear the pause line when not paused
         drawToBuffer(0, bufferY, pad + "                                                  ");
     }
     
-    // Move cursor to top instead of clearing screen (reduces blinking)
     std::cout << "\033[H";
     
-    // Output the entire buffer, ensuring we erase leftovers when a line becomes shorter
     static std::vector<size_t> lastWidths;
     if (lastWidths.size() != screenBuffer.size()) lastWidths.assign(screenBuffer.size(), 0);
     for (size_t i = 0; i < screenBuffer.size(); ++i) {
@@ -172,7 +185,6 @@ void Renderer::render(const Snake& snake, const Position& food, const Position& 
 }
 
 void Renderer::renderGameOver(int score, int highScore) {
-    // Clear screen for game over (not every frame)
     clearScreen();
     std::cout << "\n💀 GAME OVER! 💀\n";
     std::cout << "🏆 Final Score: " << score << " | High Score: " << highScore << "\n";
