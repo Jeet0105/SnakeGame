@@ -8,6 +8,9 @@
 #include <string>
 #include <cstdlib>
 
+bool Game::isKeyPressed() { return kbhit(); }
+int Game::getKey() { return getch(); }
+
 Game::Game() 
     : snake(BOARD_WIDTH / 2, BOARD_HEIGHT / 2, BOARD_WIDTH, BOARD_HEIGHT),
       renderer(BOARD_WIDTH, BOARD_HEIGHT),
@@ -78,9 +81,9 @@ void Game::generateObstacles(int count) {
 }
 
 void Game::handleInput() {
-    if (!kbhit()) return;
+    if (!isKeyPressed()) return;
     
-    int key = getch();
+    int key = getKey();
     
     // Menu input
     if (state == MENU) {
@@ -90,7 +93,7 @@ void Game::handleInput() {
             state = PLAYING;
         } else if (key == '2') {
             renderer.renderHighScore(highScoreName, highScore);
-            (void)getch();
+            (void)getKey();
             renderer.renderMenu();
         } else if (key == '3' || key == 'q' || key == 'Q') {
             saveHighScore();
@@ -101,11 +104,11 @@ void Game::handleInput() {
     
     // Handle escape sequences for arrow keys (Linux/macOS)
     if (key == 27) {
-        if (!kbhit()) return;
-        int key2 = getch();
+        if (!isKeyPressed()) return;
+        int key2 = getKey();
         if (key2 == 91) {
-            if (!kbhit()) return;
-            int key3 = getch();
+            if (!isKeyPressed()) return;
+            int key3 = getKey();
             if (state == PLAYING) {
                 switch (key3) {
                     case 65: snake.changeDirection(UP); break;
@@ -313,8 +316,8 @@ void Game::run() {
                 break;
             case GAME_OVER:
                 renderer.renderGameOver(score, highScore);
-                if (kbhit()) {
-                    int key = getch();
+                if (isKeyPressed()) {
+                    int key = getKey();
                     if (key == ' ' || key == 'r' || key == 'R') {
                         state = MENU;
                         renderer.renderMenu();
