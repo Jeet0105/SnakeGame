@@ -44,6 +44,10 @@ private:
     void saveHighScore();
     void loadHighScore();
     
+protected:
+    virtual bool isKeyPressed();
+    virtual int getKey();
+
     // New helpers
     void askPlayerName();
     void saveScoreEntry();
